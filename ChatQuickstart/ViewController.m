@@ -95,11 +95,18 @@
             // Handle response from server
             if (!jsonError) {
                 self.identity = tokenResponse[@"identity"];
-                self.client = [TwilioChatClient chatClientWithToken:tokenResponse[@"token"] properties:nil delegate:self];
+                 __weak typeof(self) weakSelf = self;
+                [TwilioChatClient chatClientWithToken:tokenResponse[@"token"]
+                                           properties:nil
+                                             delegate:self
+                                            completion:^(TCHResult *result, TwilioChatClient *chatClient) {
+                                                weakSelf.client = chatClient;
+                                                dispatch_async(dispatch_get_main_queue(), ^{
+                                                    self.navigationItem.prompt = [NSString stringWithFormat:@"Logged in as %@", self.identity];
+                                                });
+                                            }];
                 
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    self.navigationItem.prompt = [NSString stringWithFormat:@"Logged in as %@", self.identity];
-                });
+               
                 
             } else {
                 NSLog(@"ViewController viewDidLoad: error parsing token from server");
@@ -208,7 +215,7 @@
 #pragma mark - TwilioChatClientDelegate
 
 - (void)chatClient:(TwilioChatClient *)client
-synchronizationStatusChanged:(TCHClientSynchronizationStatus)status {
+synchronizationStatusUpdated:(TCHClientSynchronizationStatus)status {
     if (status == TCHClientSynchronizationStatusCompleted) {
         NSString *defaultChannel = @"general";
         
